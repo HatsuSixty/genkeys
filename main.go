@@ -20,6 +20,7 @@ genkeys is a program that reads a file containing keybinding definitions and out
 		Supported compositors/window managers are:
 			sway/i3
 			hyprland
+			all
 		If 'help' is provided instead, it will print this help.
 	CONFIG    The file containing the keybinding definitons. Defaults to '$HOME/.config/genkeys.gnks'. For more details, see 'help key_defs'.
 
@@ -376,25 +377,36 @@ func dumpConfigSway(keybindings []Keybinding, file io.Writer) {
 	}
 }
 
+func compileFileIntoConfig(file string) []Keybinding {
+	filecontent := readFileToString(file)
+	return parseConfig(lex(file, filecontent))
+}
+
 type Configuration struct {
 	WriteToFile bool
 	HyprlandPath string
 	SwayPath string
 }
 
+type ConfigFormat int
+const (
+	CONFIG_SWAY ConfigFormat = iota
+	CONFIG_HYPR ConfigFormat = iota
+	CONFIG_ALL  ConfigFormat = iota
+)
+
 func main() {
-	if len(os.Args) < 2 {
-		die("%s\nERROR: No configuration format was specified", USAGE)
+	cfgFormatStr := "all"
+	if len(os.Args) > 1 {
+		cfgFormatStr = os.Args[1]
 	}
 
-	cfgFormat := os.Args[1]
+	var cfgFormat ConfigFormat
 
-	var dumpConfig func([]Keybinding, io.Writer)
-	switch (cfgFormat) {
-	case "sway", "i3":
-		dumpConfig = dumpConfigSway
-	case "hyprland":
-		dumpConfig = dumpConfigHyprland
+	switch (cfgFormatStr) {
+	case "sway", "i3": cfgFormat = CONFIG_SWAY
+	case "hyprland": cfgFormat = CONFIG_HYPR
+	case "all": cfgFormat = CONFIG_ALL
 	case "help":
 		if len(os.Args) > 2 {
 			switch (os.Args[2]) {
@@ -411,7 +423,7 @@ func main() {
 		fmt.Println(USAGE)
 		os.Exit(0)
 	default:
-		die("%s\nERROR: Unknown configuration format: `%s`", USAGE, cfgFormat)
+		die("%s\nERROR: Unknown configuration format: `%s`", USAGE, cfgFormatStr)
 	}
 
 	fpath := path.Join(os.Getenv("HOME"), "/.config/genkeys.gnks")
@@ -430,26 +442,43 @@ func main() {
 		}
 	}
 
-	var stream io.Writer
-	stream = os.Stdout
-
-	if config.WriteToFile {
-		switch (cfgFormat) {
-		case "sway", "i3":
+	switch (cfgFormat) {
+	case CONFIG_SWAY:
+		if config.WriteToFile {
 			if strings.TrimSpace(config.SwayPath) == "" {
 				die("ERROR: `SwayPath` not defined in config")
 			}
-			stream = getStream(config.SwayPath)
-		case "hyprland":
+
+			dumpConfigSway(compileFileIntoConfig(fpath), getStream(config.SwayPath))
+		} else {
+			dumpConfigSway(compileFileIntoConfig(fpath), os.Stdout)
+		}
+	case CONFIG_HYPR:
+		if config.WriteToFile {
 			if strings.TrimSpace(config.HyprlandPath) == "" {
 				die("ERROR: `HyprlandPath` not defined in config")
 			}
-			stream = getStream(config.HyprlandPath)
-		default:
-			die("ERROR: Saving config format `%s` is not implemented", cfgFormat)
-		}
-	}
 
-	filecontent := readFileToString(fpath)
-	dumpConfig(parseConfig(lex(fpath, filecontent)), stream)
+			dumpConfigHyprland(compileFileIntoConfig(fpath), getStream(config.HyprlandPath))
+		} else {
+			dumpConfigHyprland(compileFileIntoConfig(fpath), os.Stdout)
+		}
+	case CONFIG_ALL:
+		if config.WriteToFile {
+			if strings.TrimSpace(config.SwayPath) == "" {
+				die("ERROR: `SwayPath` not defined in config")
+			}
+			if strings.TrimSpace(config.HyprlandPath) == "" {
+				die("ERROR: `HyprlandPath` not defined in config")
+			}
+
+			dumpConfigHyprland(compileFileIntoConfig(fpath), getStream(config.HyprlandPath))
+			dumpConfigSway(compileFileIntoConfig(fpath), getStream(config.SwayPath))
+		} else {
+			dumpConfigHyprland(compileFileIntoConfig(fpath), os.Stdout)
+			dumpConfigSway(compileFileIntoConfig(fpath), os.Stdout)
+		}
+	default:
+		die("ERROR: Saving config format `%s` is not implemented", cfgFormatStr)
+	}
 }

@@ -326,7 +326,7 @@ func dumpKeyHyprland(key Key) string {
 	}
 }
 
-func dumpConfigHyprland(keybindings []Keybinding, file io.Writer) {
+func dumpKeydefsHyprland(keybindings []Keybinding, file io.Writer) {
 	w := bufio.NewWriter(file)
 
 	for _, ks := range keybindings {
@@ -358,7 +358,7 @@ func dumpConfigHyprland(keybindings []Keybinding, file io.Writer) {
 	}
 }
 
-func dumpConfigSway(keybindings []Keybinding, file io.Writer) {
+func dumpKeydefsSway(keybindings []Keybinding, file io.Writer) {
 	w := bufio.NewWriter(file)
 
 	for _, ks := range keybindings {
@@ -377,7 +377,9 @@ func dumpConfigSway(keybindings []Keybinding, file io.Writer) {
 	}
 }
 
-func compileFileIntoConfig(file string) []Keybinding {
+type KeyDefs []Keybinding
+
+func compileFileIntoKeydefs(file string) KeyDefs {
 	filecontent := readFileToString(file)
 	return parseConfig(lex(file, filecontent))
 }
@@ -394,6 +396,30 @@ const (
 	CONFIG_HYPR ConfigFormat = iota
 	CONFIG_ALL  ConfigFormat = iota
 )
+
+func writeConfigHyprland(config Configuration, keydefs string) {
+	if config.WriteToFile {
+		if strings.TrimSpace(config.HyprlandPath) == "" {
+			die("ERROR: `HyprlandPath` not defined in config")
+		}
+
+		dumpKeydefsHyprland(compileFileIntoKeydefs(keydefs), getStream(config.HyprlandPath))
+	} else {
+		dumpKeydefsHyprland(compileFileIntoKeydefs(keydefs), os.Stdout)
+	}
+}
+
+func writeConfigSway(config Configuration, keydefs string) {
+	if config.WriteToFile {
+		if strings.TrimSpace(config.SwayPath) == "" {
+			die("ERROR: `SwayPath` not defined in config")
+		}
+
+		dumpKeydefsSway(compileFileIntoKeydefs(keydefs), getStream(config.SwayPath))
+	} else {
+		dumpKeydefsSway(compileFileIntoKeydefs(keydefs), os.Stdout)
+	}
+}
 
 func main() {
 	cfgFormatStr := "all"
@@ -444,40 +470,12 @@ func main() {
 
 	switch (cfgFormat) {
 	case CONFIG_SWAY:
-		if config.WriteToFile {
-			if strings.TrimSpace(config.SwayPath) == "" {
-				die("ERROR: `SwayPath` not defined in config")
-			}
-
-			dumpConfigSway(compileFileIntoConfig(fpath), getStream(config.SwayPath))
-		} else {
-			dumpConfigSway(compileFileIntoConfig(fpath), os.Stdout)
-		}
+		writeConfigSway(config, fpath)
 	case CONFIG_HYPR:
-		if config.WriteToFile {
-			if strings.TrimSpace(config.HyprlandPath) == "" {
-				die("ERROR: `HyprlandPath` not defined in config")
-			}
-
-			dumpConfigHyprland(compileFileIntoConfig(fpath), getStream(config.HyprlandPath))
-		} else {
-			dumpConfigHyprland(compileFileIntoConfig(fpath), os.Stdout)
-		}
+		writeConfigHyprland(config, fpath)
 	case CONFIG_ALL:
-		if config.WriteToFile {
-			if strings.TrimSpace(config.SwayPath) == "" {
-				die("ERROR: `SwayPath` not defined in config")
-			}
-			if strings.TrimSpace(config.HyprlandPath) == "" {
-				die("ERROR: `HyprlandPath` not defined in config")
-			}
-
-			dumpConfigHyprland(compileFileIntoConfig(fpath), getStream(config.HyprlandPath))
-			dumpConfigSway(compileFileIntoConfig(fpath), getStream(config.SwayPath))
-		} else {
-			dumpConfigHyprland(compileFileIntoConfig(fpath), os.Stdout)
-			dumpConfigSway(compileFileIntoConfig(fpath), os.Stdout)
-		}
+		writeConfigSway(config, fpath)
+		writeConfigHyprland(config, fpath)
 	default:
 		die("ERROR: Saving config format `%s` is not implemented", cfgFormatStr)
 	}

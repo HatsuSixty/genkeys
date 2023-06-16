@@ -16,32 +16,32 @@ import (
 const USAGE = `USAGE: genkeys <COMP/WM> [CONFIG]
 genkeys is a program that reads a file containing keybinding definitions and outputs a config file compatible with many wayland compositors/window managers.
 
-	COMP/WM   Make genkeys dump the keybinding definitions in the configuration format used by <COMP/WM>.
-		Supported compositors/window managers are:
-			sway/i3
-			hyprland
-			all
-		If 'help' is provided instead, it will print this help.
-	CONFIG    The file containing the keybinding definitons. Defaults to '$HOME/.config/genkeys.gnks'. For more details, see 'help key_defs'.
+    COMP/WM   Make genkeys dump the keybinding definitions in the configuration format used by <COMP/WM>.
+        Supported compositors/window managers are:
+            sway/i3
+            hyprland
+            all
+        If 'help' is provided instead, it will print this help.
+    CONFIG    The file containing the keybinding definitons. Defaults to '$HOME/.config/genkeys.gnks'. For more details, see 'help key_defs'.
 
-	This program is also capable of saving the generated configs in a specified file. For more details, see 'help configuring'.`
+    This program is also capable of saving the generated configs in a specified file. For more details, see 'help configuring'.`
 
 const CONFIGURING_USAGE = `Configuring:
 genkeys will try to find its configuration file at '$HOME/.config/genkeys.json'. As you can see, genkeys is configured using the json format. Here's how it's configured:
-	{
-		"WriteToFile": true,
-		"HyprlandPath": "/home/user/.config/hypr/keys.conf",
-		"SwayPath": "/home/user/.config/sway/keys.conf"
-	}
+    {
+        "WriteToFile": true,
+        "HyprlandPath": "/home/user/.config/hypr/keys.conf",
+        "SwayPath": "/home/user/.config/sway/keys.conf"
+    }
 WriteToFile: Is a boolean indicating whether genkeys should write its output to a file or not.
 HyprlandPath/SwayPath: These are the paths of the files where genkeys should write its output to.`
 
 const KEYBINDINGS_USAGE = `Defining keybindings:
 Keybindings are defined the following way:
-	bind "<keys>" "<shell command>"
+    bind "<keys>" "<shell command>"
 Where <keys> are the keys that should be pressed in order to run <shell command>. Separated by spaces.
 Example:
-	bind "Super Shift Print" "slurp | grim -g - $(xdg-user-dir PICTURES)/screenshot.png"`
+    bind "Super Shift Print" "slurp | grim -g - $(xdg-user-dir PICTURES)/screenshot.png"`
 
 func isDigitsOnly(s string) bool {
 	if len(s) == 0 { return false }

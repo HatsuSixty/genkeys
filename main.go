@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"strconv"
@@ -63,7 +62,7 @@ func die(msg string, a ...any) {
 }
 
 func readFileToString(fpath string) (filecontent string) {
-	b, err := ioutil.ReadFile(fpath)
+	b, err := os.ReadFile(fpath)
 	if err != nil {
 		die("ERROR: Could not open file `%s`: %s", fpath, err)
 	}

@@ -20,6 +20,7 @@ genkeys is a program that reads a file containing keybinding definitions and out
         Supported compositors/window managers are:
             sway/i3
             hyprland
+			bspwm
             all
         If 'help' is provided instead, it will print this help.
     CONFIG    The file containing the keybinding definitons. Defaults to '$HOME/.config/genkeys.gnks'. For more details, see 'help key_defs'.
@@ -31,7 +32,8 @@ genkeys will try to find its configuration file at '$HOME/.config/genkeys.json'.
     {
         "WriteToFile": true,
         "HyprlandPath": "/home/user/.config/hypr/keys.conf",
-        "SwayPath": "/home/user/.config/sway/keys.conf"
+        "SwayPath": "/home/user/.config/sway/keys.conf",
+		"BspwmPath": "/home/user/.config/sxhkd/sxhkdrc"
     }
 WriteToFile: Is a boolean indicating whether genkeys should write its output to a file or not.
 HyprlandPath/SwayPath: These are the paths of the files where genkeys should write its output to.`
@@ -44,7 +46,9 @@ Example:
     bind "Super Shift Print" "slurp | grim -g - $(xdg-user-dir PICTURES)/screenshot.png"`
 
 func isDigitsOnly(s string) bool {
-	if len(s) == 0 { return false }
+	if len(s) == 0 {
+		return false
+	}
 	for _, c := range s {
 		if c < '0' || c > '9' {
 			return false
@@ -81,6 +85,7 @@ func getStream(file string) *os.File {
 }
 
 type TokenKind int
+
 const (
 	TOKEN_WORD TokenKind = iota
 	TOKEN_STR  TokenKind = iota
@@ -136,7 +141,7 @@ func lex(fname string, str string) []Token {
 			location.Row, location.Col =
 				lexerAdvanceLoc(rune(str[strCursor]), location.Row, location.Col)
 
-			for char != '"' && strCursor < (len(str) - 1) {
+			for char != '"' && strCursor < (len(str)-1) {
 				location.Row, location.Col =
 					lexerAdvanceLoc(rune(str[strCursor]), location.Row, location.Col)
 
@@ -166,6 +171,7 @@ func lex(fname string, str string) []Token {
 }
 
 type KeyKind int
+
 const (
 	KEY_PRINT KeyKind = iota
 	KEY_SUPER KeyKind = iota
@@ -182,11 +188,15 @@ type Key struct {
 }
 
 func stringToKey(str string, loc TokenLocation) Key {
-	switch (str) {
-	case "Print": return Key{Kind: KEY_PRINT}
-	case "Super": return Key{Kind: KEY_SUPER}
-	case "Shift": return Key{Kind: KEY_SHIFT}
-	case "Enter": return Key{Kind: KEY_ENTER}
+	switch str {
+	case "Print":
+		return Key{Kind: KEY_PRINT}
+	case "Super":
+		return Key{Kind: KEY_SUPER}
+	case "Shift":
+		return Key{Kind: KEY_SHIFT}
+	case "Enter":
+		return Key{Kind: KEY_ENTER}
 	default:
 		if strings.HasPrefix(str, "N_") {
 			num := strings.TrimPrefix(str, "N_")
@@ -213,9 +223,9 @@ func stringToKey(str string, loc TokenLocation) Key {
 }
 
 type Keybinding struct {
-	Keys []Key
+	Keys    []Key
 	Command string
-	Loc TokenLocation
+	Loc     TokenLocation
 }
 
 func parseConfig(tokens []Token) []Keybinding {
@@ -225,9 +235,9 @@ func parseConfig(tokens []Token) []Keybinding {
 	for i = 0; i < len(tokens); i++ {
 		t := tokens[i]
 
-		switch (t.Kind) {
+		switch t.Kind {
 		case TOKEN_WORD:
-			switch (t.Text) {
+			switch t.Text {
 			case "bind":
 				keybinding := Keybinding{}
 
@@ -262,8 +272,7 @@ func parseConfig(tokens []Token) []Keybinding {
 					keybinding.Keys = append(keybinding.Keys, stringToKey(k, keycomb.Loc))
 				}
 
-				if k := keybinding.Keys[0].Kind;
-				k == KEY_CHAR || k == KEY_ENTER {
+				if k := keybinding.Keys[0].Kind; k == KEY_CHAR || k == KEY_ENTER {
 					die("%s:%d:%d: Key combination cannot start with `character key` or `Enter`",
 						keycomb.Loc.File, keycomb.Loc.Row, keycomb.Loc.Col)
 				}
@@ -288,41 +297,84 @@ func parseConfig(tokens []Token) []Keybinding {
 }
 
 func dumpNumKey(num int) string {
-	switch (num) {
-	case 8: return "KP_Up"
-	case 2: return "KP_Down"
-	case 4: return "KP_Left"
-	case 6: return "KP_Right"
-	case 5: return "KP_Begin"
-	case 7: return "KP_Home"
-	case 9: return "KP_Prior"
-	case 1: return "KP_End"
-	case 3: return "KP_Next"
-	default: return "?"
+	switch num {
+	case 8:
+		return "KP_Up"
+	case 2:
+		return "KP_Down"
+	case 4:
+		return "KP_Left"
+	case 6:
+		return "KP_Right"
+	case 5:
+		return "KP_Begin"
+	case 7:
+		return "KP_Home"
+	case 9:
+		return "KP_Prior"
+	case 1:
+		return "KP_End"
+	case 3:
+		return "KP_Next"
+	default:
+		return "?"
 	}
 }
 
 func dumpKeySway(key Key) string {
-	switch (key.Kind) {
-	case KEY_PRINT: return "Print"
-	case KEY_SUPER: return "$mod"
-	case KEY_SHIFT: return "Shift"
-	case KEY_NUM: return dumpNumKey(key.Num)
-	case KEY_CHAR: return string(unicode.ToUpper(key.Char))
-	case KEY_ENTER: return "Return"
-	default: return "?"
+	switch key.Kind {
+	case KEY_PRINT:
+		return "Print"
+	case KEY_SUPER:
+		return "$mod"
+	case KEY_SHIFT:
+		return "Shift"
+	case KEY_NUM:
+		return dumpNumKey(key.Num)
+	case KEY_CHAR:
+		return string(unicode.ToUpper(key.Char))
+	case KEY_ENTER:
+		return "Return"
+	default:
+		return "?"
 	}
 }
 
 func dumpKeyHyprland(key Key) string {
-	switch (key.Kind) {
-	case KEY_PRINT: return "Print"
-	case KEY_SUPER: return "$mainMod"
-	case KEY_SHIFT: return "SHIFT"
-	case KEY_NUM: return dumpNumKey(key.Num)
-	case KEY_CHAR: return string(unicode.ToUpper(key.Char))
-	case KEY_ENTER: return "Return"
-	default: return "?"
+	switch key.Kind {
+	case KEY_PRINT:
+		return "Print"
+	case KEY_SUPER:
+		return "$mainMod"
+	case KEY_SHIFT:
+		return "SHIFT"
+	case KEY_NUM:
+		return dumpNumKey(key.Num)
+	case KEY_CHAR:
+		return string(unicode.ToUpper(key.Char))
+	case KEY_ENTER:
+		return "Return"
+	default:
+		return "?"
+	}
+}
+
+func dumpKeyBspwm(key Key) string {
+	switch key.Kind {
+	case KEY_PRINT:
+		return "Print"
+	case KEY_SUPER:
+		return "super"
+	case KEY_SHIFT:
+		return "shift"
+	case KEY_NUM:
+		return dumpNumKey(key.Num)
+	case KEY_CHAR:
+		return string(unicode.ToLower(key.Char))
+	case KEY_ENTER:
+		return "Return"
+	default:
+		return "?"
 	}
 }
 
@@ -340,7 +392,7 @@ func dumpKeydefsHyprland(keybindings []Keybinding, file io.Writer) {
 		fmt.Fprintf(w, "bind = ")
 		// I know this is a little hacky
 		// But what's more hacky than that is hyprland's config
-		switch (len(ks.Keys)) {
+		switch len(ks.Keys) {
 		case 1:
 			fmt.Fprintf(w, ", %s", dumpKeyHyprland(ks.Keys[0]))
 		case 2:
@@ -364,12 +416,33 @@ func dumpKeydefsSway(keybindings []Keybinding, file io.Writer) {
 	for _, ks := range keybindings {
 		fmt.Fprintf(w, "bindsym ")
 		for i, k := range ks.Keys {
-			fmt.Fprintf(w, dumpKeySway(k))
+			fmt.Fprint(w, dumpKeySway(k))
 			if i != (len(ks.Keys) - 1) {
 				fmt.Fprintf(w, "+")
 			}
 		}
 		fmt.Fprintf(w, " exec sh -c %s\n", strconv.Quote(ks.Command))
+	}
+
+	if err := w.Flush(); err != nil {
+		die("ERROR: Could not flush buffer: %s", err)
+	}
+}
+
+func dumpKeydefsBspwm(keybindings []Keybinding, file io.Writer) {
+	w := bufio.NewWriter(file)
+
+	for i, ks := range keybindings {
+		if i != 0 {
+			fmt.Fprintf(w, "\n")
+		}
+		for i, k := range ks.Keys {
+			fmt.Fprint(w, dumpKeyBspwm(k))
+			if i != (len(ks.Keys) - 1) {
+				fmt.Fprintf(w, " + ")
+			}
+		}
+		fmt.Fprintf(w, "\n\tsh -c %s", strconv.Quote(ks.Command))
 	}
 
 	if err := w.Flush(); err != nil {
@@ -385,16 +458,19 @@ func compileFileIntoKeydefs(file string) KeyDefs {
 }
 
 type Configuration struct {
-	WriteToFile bool
+	WriteToFile  bool
 	HyprlandPath string
-	SwayPath string
+	SwayPath     string
+	BspwmPath    string
 }
 
 type ConfigFormat int
+
 const (
-	CONFIG_SWAY ConfigFormat = iota
-	CONFIG_HYPR ConfigFormat = iota
-	CONFIG_ALL  ConfigFormat = iota
+	CONFIG_SWAY  ConfigFormat = iota
+	CONFIG_HYPR  ConfigFormat = iota
+	CONFIG_BSPWM ConfigFormat = iota
+	CONFIG_ALL   ConfigFormat = iota
 )
 
 func writeConfigHyprland(config Configuration, keydefs string) {
@@ -421,6 +497,18 @@ func writeConfigSway(config Configuration, keydefs string) {
 	}
 }
 
+func writeConfigBspwm(config Configuration, keydefs string) {
+	if config.WriteToFile {
+		if strings.TrimSpace(config.BspwmPath) == "" {
+			die("ERROR: `BspwmPath` not defined in config")
+		}
+
+		dumpKeydefsBspwm(compileFileIntoKeydefs(keydefs), getStream(config.BspwmPath))
+	} else {
+		dumpKeydefsBspwm(compileFileIntoKeydefs(keydefs), os.Stdout)
+	}
+}
+
 func main() {
 	cfgFormatStr := "all"
 	if len(os.Args) > 1 {
@@ -429,13 +517,18 @@ func main() {
 
 	var cfgFormat ConfigFormat
 
-	switch (cfgFormatStr) {
-	case "sway", "i3": cfgFormat = CONFIG_SWAY
-	case "hyprland": cfgFormat = CONFIG_HYPR
-	case "all": cfgFormat = CONFIG_ALL
+	switch cfgFormatStr {
+	case "sway", "i3":
+		cfgFormat = CONFIG_SWAY
+	case "hyprland":
+		cfgFormat = CONFIG_HYPR
+	case "bspwm":
+		cfgFormat = CONFIG_BSPWM
+	case "all":
+		cfgFormat = CONFIG_ALL
 	case "help":
 		if len(os.Args) > 2 {
-			switch (os.Args[2]) {
+			switch os.Args[2] {
 			case "configuring":
 				fmt.Println(CONFIGURING_USAGE)
 				os.Exit(0)
@@ -468,14 +561,17 @@ func main() {
 		}
 	}
 
-	switch (cfgFormat) {
+	switch cfgFormat {
 	case CONFIG_SWAY:
 		writeConfigSway(config, fpath)
 	case CONFIG_HYPR:
 		writeConfigHyprland(config, fpath)
+	case CONFIG_BSPWM:
+		writeConfigBspwm(config, fpath)
 	case CONFIG_ALL:
 		writeConfigSway(config, fpath)
 		writeConfigHyprland(config, fpath)
+		writeConfigBspwm(config, fpath)
 	default:
 		die("ERROR: Saving config format `%s` is not implemented", cfgFormatStr)
 	}

@@ -12,14 +12,13 @@ import (
 	"unicode"
 )
 
-const USAGE = `USAGE: genkeys <COMP/WM> [CONFIG]
-genkeys is a program that reads a file containing keybinding definitions and outputs a config file compatible with many wayland compositors/window managers.
-
+const USAGE = `genkeys is a program that reads a file containing keybinding definitions and outputs a config file compatible with many wayland compositors/window managers.
+USAGE: genkeys <COMP/WM> [CONFIG]
     COMP/WM   Make genkeys dump the keybinding definitions in the configuration format used by <COMP/WM>.
         Supported compositors/window managers are:
             sway/i3
             hyprland
-			bspwm
+            bspwm
             all
         If 'help' is provided instead, it will print this help.
     CONFIG    The file containing the keybinding definitons. Defaults to '$HOME/.config/genkeys.gnks'. For more details, see 'help key_defs'.
@@ -32,10 +31,10 @@ genkeys will try to find its configuration file at '$HOME/.config/genkeys.json'.
         "WriteToFile": true,
         "HyprlandPath": "/home/user/.config/hypr/keys.conf",
         "SwayPath": "/home/user/.config/sway/keys.conf",
-		"BspwmPath": "/home/user/.config/sxhkd/sxhkdrc"
+        "BspwmPath": "/home/user/.config/sxhkd/sxhkdrc"
     }
 WriteToFile: Is a boolean indicating whether genkeys should write its output to a file or not.
-HyprlandPath/SwayPath: These are the paths of the files where genkeys should write its output to.`
+HyprlandPath/SwayPath/BspwmPath: These are the paths of the files where genkeys should write its output to.`
 
 const KEYBINDINGS_USAGE = `Defining keybindings:
 Keybindings are defined the following way:
